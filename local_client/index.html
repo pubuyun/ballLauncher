@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Turret Remote Client</title>
+  <style>
+    :root{
+      --card: #fff;
+      --muted: #666;
+      --shadow: 0 8px 24px rgba(0,0,0,.12);
+      --radius: 14px;
+      --accent: #2b6cff;
+    }
+    *{box-sizing: border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif,system-ui,Segoe UI,Arial;
+      background:#f6f7fb; color:#111; display:flex; flex-direction:column;
+    }
+    header{
+      position:sticky; top:0; z-index:10; background:#fff; box-shadow: var(--shadow);
+      padding:10px 16px; display:flex; align-items:center; gap:10px;
+    }
+    header .title{font-weight:700; margin-right:10px}
+    input[type="text"]{padding:10px 12px; border:1px solid #ddd; border-radius:10px; min-width:260px}
+    button{
+      padding:10px 14px; border-radius:10px; border:1px solid #d0d6ff; background:#eef2ff; color:#1b3cff;
+      cursor:pointer; font-weight:600;
+    }
+    button:active{transform:scale(.98)}
+    main{
+      flex:1; display:grid; place-items:center; padding:18px;
+    }
+    .stage{
+      width:min(92vw, 1100px);
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display:grid; grid-template-rows: auto auto; gap:12px; padding:14px;
+    }
+    .video-wrap{
+      display:grid; place-items:center; position:relative;
+      padding:10px; border-radius:12px; background:#0a0a0a;
+    }
+    .video-wrap img{
+      max-width:100%; height:auto; border-radius:12px; background:#000;
+      display:block; object-fit:contain;
+    }
+    /* 十字线小瞄准 */
+    .reticle{
+      position:absolute; inset:0; pointer-events:none;
+      background:
+        linear-gradient(to right, transparent calc(50% - 0.5px), rgba(255,255,255,.6) calc(50% - 0.5px), rgba(255,255,255,.6) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+        linear-gradient(to bottom, transparent calc(50% - 0.5px), rgba(255,255,255,.6) calc(50% - 0.5px), rgba(255,255,255,.6) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+      opacity:.25;
+    }
+    /* 控件条 */
+    .hud{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;
+    }
+    .slider{display:flex; align-items:center; gap:8px; color:#333}
+    .slider input[type="range"]{width:220px}
+    .badge{padding:6px 10px; border-radius:999px; background:#f1f3ff; border:1px solid #dfe4ff; color:#3141ff; font-size:12px}
+    .ghost{background:#fff; border-color:#ddd; color:#333}
+    footer{
+      padding:10px 16px; color:#555; display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+    }
+    .status-dot{
+      width:10px;height:10px;border-radius:50%;display:inline-block;background:#bbb;margin-right:6px;vertical-align:middle
+    }
+    .ok{background:#22c55e}.warn{background:#f59e0b}.err{background:#ef4444}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    .hint{color:#777}
+    kbd{background:#eee;border:1px solid #ddd;border-bottom-color:#ccc;border-radius:6px;padding:2px 6px;margin:0 2px;box-shadow:inset 0 -1px 0 #ccc;font-size:12px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">Turret Remote Client</div>
+    <input id="host" type="text" placeholder="e.g. 192.168.1.50:8000">
+    <button id="connect">Connect</button>
+    <span id="conn" class="badge">Disconnected</span>
+    <span class="hint">快捷键：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或 <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>；<kbd>Space</kbd>发射，<kbd>R</kbd>供弹，<kbd>X</kbd>停轮，<kbd>Q/E</kbd>调功率</span>
+  </header>
+
+  <main>
+    <section class="stage">
+      <div class="video-wrap">
+        <img id="video" alt="video stream (connect first)">
+        <div class="reticle"></div>
+      </div>
+
+      <div class="hud">
+        <div class="slider">
+          Flywheel
+          <input id="fly" type="range" min="0" max="1" step="0.05" value="0">
+          <span id="flyv">0</span>
+        </div>
+        <button id="shoot">Shoot <kbd>Space</kbd></button>
+        <button id="reload">Reload <kbd>R</kbd></button>
+        <button id="stop" class="ghost">Stop Wheels <kbd>X</kbd></button>
+        <button id="status" class="ghost">Status</button>
+        <span class="badge"><span id="sd" class="status-dot"></span><span id="stat">yaw=0, tilt=0, power=0</span></span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div>控制速率：Yaw <span class="mono">60°/s</span>，Tilt <span class="mono">30°/s</span>（按住键连续控制）</div>
+  </footer>
+
+  <script>
+    // ---------- connection ----------
+    let ws = null;
+    let host = "";
+    const el = (id)=>document.getElementById(id);
+    const $conn = el('conn'), $sd = el('sd'), $stat = el('stat');
+
+    function setConn(state){
+      if(state==="ok"){ $conn.textContent="Connected"; $conn.style.background="#e8fff2"; $conn.style.borderColor="#b7f5cf"; $conn.style.color="#128348"; $sd.className="status-dot ok"; }
+      else if(state==="warn"){ $conn.textContent="Connecting..."; $conn.style.background="#fff9e6"; $conn.style.borderColor="#ffe0a3"; $conn.style.color="#7a5600"; $sd.className="status-dot warn"; }
+      else { $conn.textContent="Disconnected"; $conn.style.background="#ffecec"; $conn.style.borderColor="#ffc9c9"; $conn.style.color="#a10000"; $sd.className="status-dot err"; }
+    }
+
+    el('connect').onclick = ()=>{
+      host = el('host').value.trim();
+      if(!host){ alert("Enter robot host:port"); return; }
+      setConn('warn');
+      const proto = (location.protocol === "https:") ? "wss" : "ws";
+      try { ws && ws.close(); } catch(e){}
+      ws = new WebSocket(`${proto}://${host}/ws`);
+      ws.onopen  = ()=>{ setConn('ok'); initStatus(); };
+      ws.onclose = ()=> setConn('err');
+      ws.onmessage = (ev)=>{ try{
+          const obj = JSON.parse(ev.data);
+          if(obj.ok && 'yaw' in obj){
+            yaw = obj.yaw; tilt = obj.tilt;
+            el('fly').value = (obj.flywheel ?? 0).toFixed(2);
+            el('flyv').textContent = el('fly').value;
+            renderStatus();
+          }
+        }catch(e){/* ignore */} };
+      el('video').src = `http://${host}/video`;
+    };
+
+    // ---------- command helpers ----------
+    function send(cmd, value){
+      if(!ws || ws.readyState!==1) return;
+      const msg = (value===undefined) ? {cmd} : {cmd, value};
+      ws.send(JSON.stringify(msg));
+    }
+    function initStatus(){ send('status'); }
+
+    // ---------- state & limits ----------
+    let yaw = 0, tilt = 0, power = 0;
+    const LIM = { yawMin:-90, yawMax:90, tiltMin:-10, tiltMax:35 };
+    const RATE = { yaw:60, tilt:30 }; // deg per second
+
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+    function renderStatus(){
+      $stat.textContent = `yaw=${yaw.toFixed(1)}°, tilt=${tilt.toFixed(1)}°, power=${(+el('fly').value).toFixed(2)}`;
+    }
+
+    // ---------- keyboard control ----------
+    const pressed = new Set();
+    const map = {
+      "ArrowLeft":"yaw-", "ArrowRight":"yaw+",
+      "ArrowUp":"tilt+",  "ArrowDown":"tilt-",
+      "KeyA":"yaw-", "KeyD":"yaw+",
+      "KeyW":"tilt+", "KeyS":"tilt-",
+      "Space":"shoot", "KeyR":"reload", "KeyX":"stop",
+      "KeyQ":"power-", "KeyE":"power+",
+    };
+
+    // 防止方向键滚屏
+    window.addEventListener('keydown', (e)=>{
+      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+      const act = map[e.code];
+      if(!act) return;
+      // 单次触发类
+      if(act==="shoot"){ send('shoot', parseFloat(el('fly').value||"0.8") || 0.8); return; }
+      if(act==="reload"){ send('reload'); return; }
+      if(act==="stop"){ send('flywheel', 0.0); el('fly').value="0"; el('flyv').textContent="0"; renderStatus(); return; }
+      if(act==="power-"){ const v=Math.max(0, (+el('fly').value-0.05).toFixed(2)); el('fly').value=v; el('flyv').textContent=v; send('flywheel', +v); renderStatus(); return; }
+      if(act==="power+"){ const v=Math.min(1, (+el('fly').value+0.05).toFixed(2)); el('fly').value=v; el('flyv').textContent=v; send('flywheel', +v); renderStatus(); return; }
+      // 连续类
+      pressed.add(act);
+    });
+
+    window.addEventListener('keyup', (e)=>{
+      const act = map[e.code];
+      if(!act) return;
+      pressed.delete(act);
+    });
+
+    // 连续控制循环（60 FPS）
+    let last = performance.now();
+    function loop(t){
+      const dt = (t - last)/1000; last = t;
+      let changed = false;
+
+      if(pressed.has("yaw-")){ yaw = clamp(yaw - RATE.yaw * dt, LIM.yawMin, LIM.yawMax); changed = true; }
+      if(pressed.has("yaw+")){ yaw = clamp(yaw + RATE.yaw * dt, LIM.yawMin, LIM.yawMax); changed = true; }
+      if(pressed.has("tilt-")){ tilt = clamp(tilt - RATE.tilt * dt, LIM.tiltMin, LIM.tiltMax); changed = true; }
+      if(pressed.has("tilt+")){ tilt = clamp(tilt + RATE.tilt * dt, LIM.tiltMin, LIM.tiltMax); changed = true; }
+
+      // 只有发生变化时才发送，降低带宽
+      if(changed){
+        send('yaw', +yaw.toFixed(2));
+        send('tilt', +tilt.toFixed(2));
+        renderStatus();
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // ---------- UI controls ----------
+    el('fly').addEventListener('input', ()=>{
+      const v = parseFloat(el('fly').value);
+      el('flyv').textContent = v.toFixed(2);
+      send('flywheel', v);
+      renderStatus();
+    });
+    el('shoot').onclick = ()=> send('shoot', parseFloat(el('fly').value||"0.8") || 0.8);
+    el('reload').onclick = ()=> send('reload');
+    el('stop').onclick = ()=> { send('flywheel', 0.0); el('fly').value="0"; el('flyv').textContent="0"; renderStatus(); };
+    el('status').onclick = ()=> send('status');
+  </script>
+</body>
+</html>

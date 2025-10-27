@@ -1,7 +1,4 @@
 import threading, time, uvicorn, config
-from hardware.stepper_motor import StepperMotor
-from hardware.tilt_servo import TiltServo
-from hardware.shooter import Shooter
 from tools.command_handler import CommandHandler
 from web.app import app
 
@@ -26,22 +23,12 @@ def control_loop(stepper, tilt, shooter, stop_event):
 
 
 if __name__ == "__main__":
-    stepper = StepperMotor()
-    tilt = TiltServo()
-    shooter = Shooter()
-    handler = CommandHandler(stepper, tilt, shooter)
     from web import app as webapp
 
-    webapp.handler = handler
     stop_event = threading.Event()
-    th = threading.Thread(
-        target=control_loop, args=(stepper, tilt, shooter, stop_event), daemon=True
-    )
-    th.start()
     try:
         uvicorn.run("web.app:app", host="0.0.0.0", port=8000, reload=False)
     except KeyboardInterrupt:
         pass
     finally:
         stop_event.set()
-        th.join()
