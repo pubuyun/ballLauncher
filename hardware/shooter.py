@@ -1,6 +1,5 @@
 import time
 from enum import Enum, auto
-
 from subsystem_base import SubsystemBase
 from gpiozero import AngularServo, Motor
 import config
@@ -34,9 +33,9 @@ class Shooter(SubsystemBase):
     def __init__(self):
         super().__init__()
         self._hold_sec = config.RELOAD_HOLD_SEC
-        self._move_to_load_est = 0.6
-        self._move_to_idle_est = 0.6
-        self._spinup_time = 1.0  # Time to spin up flywheels
+        self._move_to_load_est = 1
+        self._move_to_idle_est = 1
+        self._spinup_time = 2.5  # Time to spin up flywheels
 
     # ----- Public API -----
     def shoot(self, speed: float) -> bool:
@@ -62,6 +61,8 @@ class Shooter(SubsystemBase):
         self._state_ts = time.monotonic()
         match st:
             case ShooterState.IDLE:
+                self.set_flywheel_power(0)
+                self._apply_flywheel_outputs()
                 self._pusher.angle = config.RELOAD_IDLE_ANGLE
             case ShooterState.SPINNING_UP:
                 # Keep pusher at idle, start flywheels
@@ -73,6 +74,8 @@ class Shooter(SubsystemBase):
                 # Hold at load position
                 pass
             case ShooterState.RETRACTING:
+                self.set_flywheel_power(0)
+                self._apply_flywheel_outputs()
                 self._pusher.angle = config.RELOAD_IDLE_ANGLE
             case _:
                 pass
@@ -83,14 +86,12 @@ class Shooter(SubsystemBase):
         self._motor_a = Motor(
             forward=config.MOTOR_A_IN1,
             backward=config.MOTOR_A_IN2,
-            enable=config.MOTOR_A_EN,
-            pwm=True,
+            pwm=False,
         )
         self._motor_b = Motor(
             forward=config.MOTOR_B_IN3,
             backward=config.MOTOR_B_IN4,
-            enable=config.MOTOR_B_EN,
-            pwm=True,
+            pwm=False,
         )
 
         # Initialize pusher servo

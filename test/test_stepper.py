@@ -17,11 +17,11 @@ Commands:
 Run:
   python test/test_stepper.py
 """
-
+import os
 import sys
 import time
 import threading
-
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 from hardware.stepper_motor import StepperYaw
 

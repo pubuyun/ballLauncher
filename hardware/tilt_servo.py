@@ -23,12 +23,9 @@ class TiltServo(SubsystemBase):
     def initialize(self):
         self._servo = AngularServo(
             config.TILT_SERVO_PIN,
-            min_angle=config.PITCH_MIN_DEG,
-            max_angle=config.PITCH_MAX_DEG,
-            min_pulse_width=(config.SERVO_MIN_DC / 100.0) / config.SERVO_PWM_FREQ,
-            max_pulse_width=(config.SERVO_MAX_DC / 100.0) / config.SERVO_PWM_FREQ,
-            frame_width=1.0 / config.SERVO_PWM_FREQ,
-            initial_angle=0.0,
+            min_angle=config.PITCH_MAX_DEG,
+            max_angle=config.PITCH_MIN_DEG,
+            initial_angle=0.0
         )
         self.current_angle = 0.0
         self.target_angle = 0.0
