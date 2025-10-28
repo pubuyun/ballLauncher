@@ -14,27 +14,11 @@ class ShooterState(Enum):
 
 
 class Shooter(SubsystemBase):
-    """
-    Combined shooter system with flywheel motors and reload servo.
-
-    A complete shoot cycle:
-    1. Flywheels spin up to target speed
-    2. Pusher moves forward to feed position
-    3. Pusher holds at position briefly
-    4. Pusher retracts to idle position
-    5. Flywheels can be stopped or kept spinning
-
-    Public:
-      - shoot(speed): trigger a shoot cycle with flywheel speed
-      - set_flywheel_power(p): directly control flywheel power
-      - state: current shooter state
-    """
-
     def __init__(self):
         super().__init__()
         self._hold_sec = config.RELOAD_HOLD_SEC
-        self._move_to_load_est = 1
-        self._move_to_idle_est = 1
+        self._move_to_load_est = 0.7
+        self._move_to_idle_est = 0.7
         self._spinup_time = 2.5  # Time to spin up flywheels
 
     # ----- Public API -----
@@ -87,22 +71,25 @@ class Shooter(SubsystemBase):
             forward=config.MOTOR_A_IN1,
             backward=config.MOTOR_A_IN2,
             pwm=False,
+            pin_factory=self.pin_factory,
         )
         self._motor_b = Motor(
             forward=config.MOTOR_B_IN3,
             backward=config.MOTOR_B_IN4,
             pwm=False,
+            pin_factory=self.pin_factory,
         )
 
         # Initialize pusher servo
         self._pusher = AngularServo(
             config.RELOAD_SERVO_PIN,
-            min_angle=min(config.RELOAD_IDLE_ANGLE, config.RELOAD_LOAD_ANGLE),
-            max_angle=max(config.RELOAD_IDLE_ANGLE, config.RELOAD_LOAD_ANGLE),
-            min_pulse_width=(config.SERVO_MIN_DC / 100.0) / config.SERVO_PWM_FREQ,
-            max_pulse_width=(config.SERVO_MAX_DC / 100.0) / config.SERVO_PWM_FREQ,
-            frame_width=1.0 / config.SERVO_PWM_FREQ,
+            min_angle=config.RELOAD_LOAD_ANGLE,
+            max_angle=config.RELOAD_IDLE_ANGLE,
+            min_pulse_width=0.0004,
+            max_pulse_width=0.00212,
+            frame_width=0.02,
             initial_angle=config.RELOAD_IDLE_ANGLE,
+            pin_factory=self.pin_factory,
         )
 
         # Initialize state

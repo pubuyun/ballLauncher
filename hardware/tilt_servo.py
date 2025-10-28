@@ -15,17 +15,16 @@ class TiltServo(SubsystemBase):
     def __init__(self):
         super().__init__()
 
-    # ----- Public API -----
     def set_target_angle(self, deg: float):
         self.target_angle = max(config.PITCH_MIN_DEG, min(config.PITCH_MAX_DEG, deg))
 
-    # ----- SubsystemBase -----
     def initialize(self):
         self._servo = AngularServo(
             config.TILT_SERVO_PIN,
             min_angle=config.PITCH_MAX_DEG,
             max_angle=config.PITCH_MIN_DEG,
-            initial_angle=0.0
+            initial_angle=0.0,
+            pin_factory=self.pin_factory,
         )
         self.current_angle = 0.0
         self.target_angle = 0.0

@@ -5,6 +5,9 @@ from dataclasses import dataclass
 
 # GPIO numbering mode: use BCM numbering
 GPIO_MODE_BCM = True
+PIN_FACTORY = (
+    "RPiGPIOFactory"  # Options: "RPiGPIOFactory", "MockFactory", "PiGPIOFactory"
+)
 
 # ===== Stepper (Yaw) =====
 STEPPER_DIR_PIN = 23
@@ -14,7 +17,6 @@ STEPPER_EN_PIN = 24  # optional, set to None if not used
 # Mechanical parameters
 STEPS_PER_REV = 200  # 1.8°/step motor
 MICROSTEPPING = 8  # e.g. A4988/DRV8825 microstep setting
-GEAR_RATIO = 1.0  # external gear ratio if any
 
 # Motion limits and dynamics
 YAW_MIN_DEG = -90.0
@@ -23,19 +25,17 @@ YAW_MAX_SPEED_DPS = 180.0  # degrees per second
 
 # ===== Tilt Servo (Pitch) =====
 TILT_SERVO_PIN = 19
-SERVO_PWM_FREQ = 50  # Hz
-
-# Servo calibration (duty cycle at 50Hz). Typical: 0.5ms-2.5ms -> 2.5-12.5% duty
-SERVO_MIN_DC = 2.0  # Futaba S3003 ≈1.12ms (1520±400us) at 50Hz
-SERVO_MAX_DC = 10.6  # Futaba S3003 ≈1.92ms (1520±400us) at 50Hz
 PITCH_MIN_DEG = -10.0
 PITCH_MAX_DEG = 10.0
-# ===== Reload Servo (Feeder) =====
+
+# ===== Reload Servo=====
 RELOAD_SERVO_PIN = 20
 RELOAD_IDLE_ANGLE = 90
 RELOAD_LOAD_ANGLE = 0
 RELOAD_HOLD_SEC = 0.2
-# ===== Flywheel Motors (L298N) =====
+
+# ===== Flywheel Motors =====
+
 # Motor A (left)
 MOTOR_A_IN1 = 13
 MOTOR_A_IN2 = 6

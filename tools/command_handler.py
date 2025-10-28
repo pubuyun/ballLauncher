@@ -1,40 +1,77 @@
-import json, time
+import json
+import time
 import config
-def _ts(): return time.strftime('%H:%M:%S')
+
+
+def _ts():
+    return time.strftime("%H:%M:%S")
+
+
 class CommandHandler:
     def __init__(self, stepper_motor, tilt_servo, shooter):
-        self.stepper=stepper_motor; self.tilt=tilt_servo; self.shooter=shooter
+        self.stepper = stepper_motor
+        self.tilt = tilt_servo
+        self.shooter = shooter
+
     def handle_command(self, command: str):
-        command=command.strip()
+        command = command.strip()
         try:
-            if command.startswith('{'):
-                obj=json.loads(command); cmd=(obj.get('cmd','') or '').lower(); val=obj.get('value', None)
+            if command.startswith("{"):
+                obj = json.loads(command)
+                cmd = (obj.get("cmd", "") or "").lower()
+                val = obj.get("value", None)
                 print(f"[{_ts()}] [CMD] raw={obj}")
-                resp=self._dispatch(cmd, val); print(f"[{_ts()}] [CMD] resp={resp}"); return resp
-            parts=command.split(); 
-            if not parts: return "ERR: empty"
-            cmd=parts[0].lower(); val=float(parts[1]) if len(parts)>1 else None
+                return self._process_command(cmd, val)
+            parts = command.split()
+            if not parts:
+                return "ERR: empty"
+            cmd, val = parts[0].lower(), float(parts[1]) if len(parts) > 1 else None
             print(f"[{_ts()}] [CMD] raw={{'cmd': '{cmd}', 'value': {val}}}")
-            resp=self._dispatch(cmd, val); print(f"[{_ts()}] [CMD] resp={resp}"); return resp
+            return self._process_command(cmd, val)
         except Exception as e:
-            err=f"ERR: {e}"; print(f"[{_ts()}] [CMD] error={err}"); return err
-    def _dispatch(self, cmd, val):
-        if cmd=='yaw':
-            if val is None: return 'ERR: yaw needs value'
-            v=max(config.YAW_MIN_DEG,min(config.YAW_MAX_DEG,float(val))); self.stepper.set_target_angle(v); return f'OK: yaw={v:.2f}'
-        if cmd=='tilt':
-            if val is None: return 'ERR: tilt needs value'
-            v=max(config.PITCH_MIN_DEG,min(config.PITCH_MAX_DEG,float(val))); self.tilt.set_target_angle(v); return f'OK: tilt={v:.2f}'
-        if cmd=='shoot':
-            if val is None: return 'ERR: shoot needs power 0..1'
-            p=max(0.0,min(1.0,float(val))); self.shooter.shoot(p); return f'OK: shoot power={p:.2f}'
-        if cmd=='flywheel':
-            if val is None: return 'ERR: flywheel needs power 0..1'
-            p=max(0.0,min(1.0,float(val))); self.shooter.set_flywheel_power(p); return f'OK: flywheel power={p:.2f}'
-        if cmd=='reload':
-            p=max(0.2, getattr(self.shooter, '_power', 0.0)); self.shooter.shoot(p); return 'OK: reload'
-        if cmd=='status':
-            payload={'ok': True,'yaw': self.stepper.get_angle(),'tilt': self.tilt.get_angle(),'flywheel': getattr(self.shooter, '_power', 0.0),'state': self.shooter.state}
-            print(f"[{_ts()}] [CMD] status={payload}")
-            return json.dumps(payload)
-        return f"ERR: unknown cmd '{cmd}'"
+            err = f"ERR: {e}"
+            print(f"[{_ts()}] [CMD] error={err}")
+            return err
+
+    def _process_command(self, cmd, val):
+        handlers = {
+            "yaw": lambda v: self._set_angle(
+                self.stepper, v, config.YAW_MIN_DEG, config.YAW_MAX_DEG, "yaw"
+            ),
+            "tilt": lambda v: self._set_angle(
+                self.tilt, v, config.PITCH_MIN_DEG, config.PITCH_MAX_DEG, "tilt"
+            ),
+            "shoot": lambda v: self._set_power(self.shooter.shoot, v, "shoot power"),
+            "flywheel": lambda v: self._set_power(
+                self.shooter.set_flywheel_power, v, "flywheel power"
+            ),
+            "reload": lambda _: self._reload(),
+            "status": lambda _: self._status(),
+        }
+        return handlers.get(cmd, lambda _: f"ERR: unknown cmd '{cmd}'")(val)
+
+    def _set_angle(self, device, value, min_val, max_val, name):
+        if value is None:
+            return f"ERR: {name} needs value"
+        value = max(min_val, min(max_val, float(value)))
+        device.set_target_angle(value)
+        return f"OK: {name}={value:.2f}"
+
+    def _set_power(self, action, value, name):
+        if value is None:
+            return f"ERR: {name} needs power 0..1"
+        value = max(0.0, min(1.0, float(value)))
+        action(value)
+        return f"OK: {name}={value:.2f}"
+
+    def _reload(self):
+        pass
+        return "OK: reload"
+
+    def _status(self):
+        payload = {
+            "ok": True,
+            "state": self.shooter.state,
+        }
+        print(f"[{_ts()}] [CMD] status={payload}")
+        return json.dumps(payload)
