@@ -7,6 +7,8 @@ import config
 class StepperYaw(SubsystemBase):
 
     def __init__(self):
+        super().__init__()
+    def initialize(self):
         self.pulse = PWMOutputDevice(
             config.STEPPER_STEP_PIN, pin_factory=self.pin_factory
         )
@@ -22,7 +24,6 @@ class StepperYaw(SubsystemBase):
         self.frequency = (
             config.YAW_MAX_SPEED_DPS / 360 * config.STEPS_PER_REV * config.MICROSTEPPING
         )
-
     def set_direction(self, clockwise=True):
         if clockwise:
             self.direction.off()

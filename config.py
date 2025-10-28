@@ -6,7 +6,7 @@ from dataclasses import dataclass
 # GPIO numbering mode: use BCM numbering
 GPIO_MODE_BCM = True
 PIN_FACTORY = (
-    "RPiGPIOFactory"  # Options: "RPiGPIOFactory", "MockFactory", "PiGPIOFactory"
+    "PiGPIOFactory"  # Options: "RPiGPIOFactory", "MockFactory", "PiGPIOFactory"
 )
 
 # ===== Stepper (Yaw) =====
@@ -25,8 +25,8 @@ YAW_MAX_SPEED_DPS = 180.0  # degrees per second
 
 # ===== Tilt Servo (Pitch) =====
 TILT_SERVO_PIN = 19
-PITCH_MIN_DEG = -10.0
-PITCH_MAX_DEG = 10.0
+PITCH_MIN_DEG = -8.0
+PITCH_MAX_DEG = 8.0
 
 # ===== Reload Servo=====
 RELOAD_SERVO_PIN = 20
