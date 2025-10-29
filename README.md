@@ -1,13 +1,13 @@
 # Ball Launcher Control System
 
-A Raspberry Pi-based turret control system with precise stepper motor positioning, servo control, and integrated shooting mechanisms. This project provides a modular, real-time control system for a ball launcher with remote command capabilities.
+A Raspberry Pi-based turret control system with angular servo positioning, servo control, and integrated shooting mechanisms. This project provides a modular, real-time control system for a ball launcher with remote command capabilities.
 
 ## 🚀 Features
 
-- **Precision Control**: Stepper motor yaw control with automatic enable/disable
+- **Precision Control**: Angular servo yaw control with direct angle positioning
 - **Smooth Servo Operation**: Tilt control using AngularServo for direct angle positioning
 - **Integrated Shooting System**: Combined flywheel motors and reload servo with state machine
-- **Non-blocking Operations**: Optimized with DigitalOutputDevice.blink for responsive control
+- **Non-blocking Operations**: Optimized servo control for responsive operation
 - **Modular Architecture**: Clean subsystem-based design with unified base class
 - **Real-time Communication**: TCP command receiver for remote control
 - **Interactive Testing**: Comprehensive test suite with interactive command interfaces
@@ -20,7 +20,7 @@ ballLauncher/
 ├── main.py                   # Main controller application
 ├── subsystem_base.py          # Base class for all subsystems
 ├── hardware/                  # Hardware control modules
-│   ├── stepper_motor.py      # Stepper motor yaw control
+│   ├── yaw_servo.py          # Angular servo yaw control
 │   ├── tilt_servo.py         # Servo pitch control
 │   └── shooter.py            # Integrated flywheel + reload system
 ├── tools/                     # Utility and communication tools
@@ -37,28 +37,25 @@ ballLauncher/
 ### Electronics
 
 - **Raspberry Pi 5** (or compatible)
-- **Stepper Motor Driver** (A4988/DRV8825 compatible)
+- **Servo Motors** (3x) for yaw, tilt and reload mechanisms
 - **L298N Motor Driver** for flywheel motors
-- **Servo Motors** (2x) for tilt and reload mechanisms
 - **DC Motors** (2x) for flywheel system
 
 ### Wiring (BCM Pin Numbers)
 
 ```
-Stepper Motor (Yaw Control):
-├── DIR Pin:  GPIO 20
-├── STEP Pin: GPIO 21
-└── EN Pin:   GPIO 16
+Yaw Servo:
+└── PWM Pin:  GPIO 17
 
 Tilt Servo:
-└── PWM Pin:  GPIO 12
+└── PWM Pin:  GPIO 19
 
 Reload Servo:
-└── PWM Pin:  GPIO 13
+└── PWM Pin:  GPIO 20
 
 L298N Motor Driver (Flywheels):
-├── Motor A: IN1=5, IN2=6, ENA=26
-└── Motor B: IN3=19, IN4=13, ENB=18
+├── Motor A: IN1=13, IN2=6
+└── Motor B: IN3=22, IN4=27
 ```
 
 ## ⚙️ Configuration
@@ -66,23 +63,26 @@ L298N Motor Driver (Flywheels):
 Edit `config.py` to match your hardware setup:
 
 ```python
-# Stepper Motor Settings
-STEPPER_DIR_PIN = 20
-STEPPER_STEP_PIN = 21
-STEPPER_EN_PIN = 16
+# Yaw Servo Settings
+YAW_SERVO_PIN = 17
 YAW_MIN_DEG = -90.0
 YAW_MAX_DEG = 90.0
-YAW_MAX_SPEED_DPS = 180.0
 
-# Servo Settings
-TILT_SERVO_PIN = 12
+# Tilt Servo Settings
+TILT_SERVO_PIN = 19
 PITCH_MIN_DEG = -10.0
-PITCH_MAX_DEG = 35.0
+PITCH_MAX_DEG = 10.0
+
+# Reload Servo Settings
+RELOAD_SERVO_PIN = 20
+RELOAD_IDLE_ANGLE = 90
+RELOAD_LOAD_ANGLE = 0
 
 # Motor Driver Settings
-MOTOR_A_IN1 = 5
+MOTOR_A_IN1 = 13
 MOTOR_A_IN2 = 6
-MOTOR_A_EN = 26
+MOTOR_B_IN3 = 22
+MOTOR_B_IN4 = 27
 ```
 
 ## 🛠️ Installation
@@ -124,8 +124,8 @@ python3 main.py
 Test individual subsystems with interactive commands:
 
 ```bash
-# Test stepper motor
-python3 test/test_stepper.py
+# Test yaw servo
+python3 test/test_yaw_servo.py
 
 # Test tilt servo
 python3 test/test_tilt_servo.py
@@ -172,19 +172,19 @@ class SubsystemBase(ABC):
     def shutdown(self): pass
 ```
 
-### Stepper Motor Control
+### Yaw Servo Control
 
 ```python
-from hardware.stepper_motor import StepperMotor
+from hardware.yaw_servo import AngularServoYaw
 
-stepper = StepperMotor()
-stepper.initialize()
+yaw = AngularServoYaw()
+yaw.initialize()
 
 # Set target angle (-90 to +90 degrees)
-stepper.set_target_angle(45.0)
+yaw.set_target_angle(45.0)
 
 # Run periodic updates
-stepper.periodic()  # Non-blocking, updates position gradually
+yaw.periodic()  # Applies position update
 ```
 
 ### Servo Control
@@ -238,11 +238,11 @@ IDLE → SPINNING_UP → PUSHING → AT_POSITION → RETRACTING → IDLE
 ### Individual Component Tests
 
 ```bash
-# Interactive stepper motor testing
-python3 test/test_stepper.py
-# Commands: angle <degrees>, speed <dps>, status, help, quit
+# Interactive yaw servo testing
+python3 test/test_yaw_servo.py
+# Commands: angle <degrees>, status, help, quit
 
-# Interactive servo testing
+# Interactive tilt servo testing
 python3 test/test_tilt_servo.py
 # Commands: angle <degrees>, status, help, quit
 
@@ -263,13 +263,12 @@ python3 test/test_shooter.py
 
 ### Non-blocking Operations
 
-- **Stepper Control**: Uses `DigitalOutputDevice.blink()` for non-blocking pulse generation
 - **Servo Control**: Direct `AngularServo` angle setting eliminates manual PWM calculations
 - **Threading**: Separate periodic update threads prevent blocking
 
 ### Hardware Optimizations
 
-- **Automatic Enable**: Stepper motor automatically disables when at target position
+- **Direct Control**: Servo provides immediate angle positioning without complex stepping
 - **State Management**: Integrated shooter prevents component conflicts
 - **Resource Management**: Proper initialization and cleanup
 
@@ -291,12 +290,6 @@ python3 test/test_shooter.py
 ## 🔧 Troubleshooting
 
 ### Common Issues
-
-**Stepper motor not moving:**
-
-- Check wiring connections (DIR, STEP, EN pins)
-- Verify stepper driver power supply
-- Ensure angle target is within configured limits
 
 **Servo not responding:**
 

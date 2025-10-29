@@ -23,6 +23,7 @@ import sys
 import os
 import time
 import threading
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from hardware.tilt_servo import TiltServo
 
@@ -87,12 +88,7 @@ def main():
                     continue
                 tilt.set_target_angle(deg)
                 print(f"[cmd] target_angle -> {tilt.target_angle:.2f} deg")
-            elif cmd == "enable":
-                if len(toks) < 2 or toks[1].lower() not in ("on", "off"):
-                    print("Usage: enable on|off")
-                    continue
-                tilt.set_enabled(toks[1].lower() == "on")
-                print(f"[cmd] enabled -> {toks[1].lower()}")
+
             elif cmd == "status":
                 print(
                     f"current={tilt.current_angle:.2f} deg, target={tilt.target_angle:.2f} deg"

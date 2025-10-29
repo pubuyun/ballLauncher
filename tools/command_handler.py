@@ -8,8 +8,8 @@ def _ts():
 
 
 class CommandHandler:
-    def __init__(self, stepper_motor, tilt_servo, shooter):
-        self.stepper = stepper_motor
+    def __init__(self, yaw_servo, tilt_servo, shooter):
+        self.yaw = yaw_servo
         self.tilt = tilt_servo
         self.shooter = shooter
 
@@ -36,7 +36,7 @@ class CommandHandler:
     def _process_command(self, cmd, val):
         handlers = {
             "yaw": lambda v: self._set_angle(
-                self.stepper, v, config.YAW_MIN_DEG, config.YAW_MAX_DEG, "yaw"
+                self.yaw, v, config.YAW_MIN_DEG, config.YAW_MAX_DEG, "yaw"
             ),
             "tilt": lambda v: self._set_angle(
                 self.tilt, v, config.PITCH_MIN_DEG, config.PITCH_MAX_DEG, "tilt"

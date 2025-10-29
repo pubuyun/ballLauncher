@@ -1,41 +1,43 @@
 import threading, time, uvicorn, config
-from hardware.stepper_motor import StepperMotor
+from hardware.yaw_servo import AngularServoYaw
 from hardware.tilt_servo import TiltServo
 from hardware.shooter import Shooter
 from tools.command_handler import CommandHandler
 from web.app import app
 
 
-def control_loop(stepper, tilt, shooter, stop_event):
-    stepper.initialize()
+def control_loop(yaw, tilt, shooter, stop_event):
+    # init
+    yaw.initialize()
     tilt.initialize()
     shooter.initialize()
-    print("Control loop started (SIM, PC webcam).")
+    print("Control loop started.")
+    # main loop
     try:
         while not stop_event.is_set():
-            stepper.periodic()
+            yaw.periodic()
             tilt.periodic()
             shooter.periodic()
             time.sleep(1.0 / config.MAIN_LOOP_HZ)
     finally:
         print("Shutting down subsystems...")
-        stepper.shutdown()
+        yaw.shutdown()
         tilt.shutdown()
         shooter.shutdown()
         print("All subsystems shut down.")
 
 
 if __name__ == "__main__":
-    stepper = StepperMotor()
+    yaw = AngularServoYaw()
     tilt = TiltServo()
     shooter = Shooter()
-    handler = CommandHandler(stepper, tilt, shooter)
+    handler = CommandHandler(yaw, tilt, shooter)
     from web import app as webapp
 
     webapp.handler = handler
     stop_event = threading.Event()
     th = threading.Thread(
-        target=control_loop, args=(stepper, tilt, shooter, stop_event), daemon=True
+        target=control_loop, args=(yaw, tilt, shooter, stop_event), daemon=True
     )
     th.start()
     try:

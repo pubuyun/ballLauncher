@@ -5,23 +5,14 @@ from dataclasses import dataclass
 
 # GPIO numbering mode: use BCM numbering
 GPIO_MODE_BCM = True
-PIN_FACTORY = (
-    "RPiGPIOFactory"  # Options: "RPiGPIOFactory", "MockFactory", "PiGPIOFactory"
-)
+PIN_FACTORY = "MockFactory"  # Options: "RPiGPIOFactory", "MockFactory", "PiGPIOFactory"
 
-# ===== Stepper (Yaw) =====
-STEPPER_DIR_PIN = 23
-STEPPER_STEP_PIN = 25
-STEPPER_EN_PIN = 24  # optional, set to None if not used
+# ===== Yaw Servo =====
+YAW_SERVO_PIN = 17
 
-# Mechanical parameters
-STEPS_PER_REV = 200  # 1.8°/step motor
-MICROSTEPPING = 8  # e.g. A4988/DRV8825 microstep setting
-
-# Motion limits and dynamics
+# Motion limits
 YAW_MIN_DEG = -90.0
 YAW_MAX_DEG = 90.0
-YAW_MAX_SPEED_DPS = 180.0  # degrees per second
 
 # ===== Tilt Servo (Pitch) =====
 TILT_SERVO_PIN = 19

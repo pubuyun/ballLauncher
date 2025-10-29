@@ -49,13 +49,11 @@ class Shooter(SubsystemBase):
                 self._apply_flywheel_outputs()
                 self._pusher.angle = config.RELOAD_IDLE_ANGLE
             case ShooterState.SPINNING_UP:
-                # Keep pusher at idle, start flywheels
                 self._pusher.angle = config.RELOAD_IDLE_ANGLE
                 self._apply_flywheel_outputs()
             case ShooterState.PUSHING:
                 self._pusher.angle = config.RELOAD_LOAD_ANGLE
             case ShooterState.AT_POSITION:
-                # Hold at load position
                 pass
             case ShooterState.RETRACTING:
                 self.set_flywheel_power(0)
