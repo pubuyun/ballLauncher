@@ -36,7 +36,7 @@ class Shooter(SubsystemBase):
 
     # ----- Internals -----
     def _apply_flywheel_outputs(self):
-        duty = max(0.0, min(1.0, self.target_flywheel_power))
+        duty = self.target_flywheel_power != 0 and 1.0 or 0.0
         self._motor_a.value = duty
         self._motor_b.value = duty
 
