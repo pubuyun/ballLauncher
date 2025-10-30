@@ -130,9 +130,6 @@ python3 -c "import config; print('Configuration loaded successfully')"
 ```bash
 # Run the main control system
 python3 main.py
-
-# Run with web interface
-python3 main_web.py
 ```
 
 ### Interactive Testing
