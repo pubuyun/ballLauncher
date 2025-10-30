@@ -1,6 +1,6 @@
 # Ball Launcher Control System
 
-A Raspberry Pi-based turret control system with angular servo positioning, servo control, and integrated shooting mechanisms. This project provides a modular, real-time control system for a ball launcher with remote command capabilities.
+A Raspberry Pi-based turret control system with precise angular servo positioning, servo control, and integrated shooting mechanisms. This project provides a modular, real-time control system for a ball launcher with remote command capabilities.
 
 ## 🚀 Features
 
@@ -9,7 +9,7 @@ A Raspberry Pi-based turret control system with angular servo positioning, servo
 - **Integrated Shooting System**: Combined flywheel motors and reload servo with state machine
 - **Non-blocking Operations**: Optimized servo control for responsive operation
 - **Modular Architecture**: Clean subsystem-based design with unified base class
-- **Real-time Communication**: TCP command receiver for remote control
+- **Real-time Communication**: Web interface for remote control
 - **Interactive Testing**: Comprehensive test suite with interactive command interfaces
 
 ## 📁 Project Structure
@@ -18,18 +18,23 @@ A Raspberry Pi-based turret control system with angular servo positioning, servo
 ballLauncher/
 ├── config.py                 # Hardware configuration and pin assignments
 ├── main.py                   # Main controller application
-├── subsystem_base.py          # Base class for all subsystems
-├── hardware/                  # Hardware control modules
-│   ├── yaw_servo.py          # Angular servo yaw control
-│   ├── tilt_servo.py         # Servo pitch control
-│   └── shooter.py            # Integrated flywheel + reload system
-├── tools/                     # Utility and communication tools
-│   └── command_receiver.py   # TCP command receiver
-└── test/                     # Interactive test suite
-    ├── test_stepper.py       # Stepper motor testing
-    ├── test_tilt_servo.py    # Servo testing
-    ├── test_servo.py         # General servo testing
-    └── test_shooter.py       # Integrated shooter testing
+├── main_web.py               # Web interface controller
+├── subsystem_base.py         # Base class for all subsystems
+├── hardware/                 # Hardware control modules
+│   ├── yaw_servo.py         # Angular servo yaw control
+│   ├── tilt_servo.py        # Servo pitch control
+│   └── shooter.py           # Integrated flywheel + reload system
+├── tools/                    # Utility and communication tools
+│   └── command_handler.py   # Command processing system
+├── test/                     # Interactive test suite
+│   ├── test_yaw_servo.py    # Yaw servo testing
+│   ├── test_tilt_servo.py   # Tilt servo testing
+│   ├── test_shooter.py      # Integrated shooter testing
+│   └── test_servo.py        # General servo testing
+└── web/                      # Web interface
+    ├── app.py               # FastAPI web application
+    └── static/
+        └── index.html       # Web control interface
 ```
 
 ## 🔧 Hardware Requirements
@@ -40,6 +45,7 @@ ballLauncher/
 - **Servo Motors** (3x) for yaw, tilt and reload mechanisms
 - **L298N Motor Driver** for flywheel motors
 - **DC Motors** (2x) for flywheel system
+- **Power Supply** for motors and servos
 
 ### Wiring (BCM Pin Numbers)
 
@@ -83,6 +89,10 @@ MOTOR_A_IN1 = 13
 MOTOR_A_IN2 = 6
 MOTOR_B_IN3 = 22
 MOTOR_B_IN4 = 27
+
+# System Settings
+MAIN_LOOP_HZ = 100.0  # 10ms tick
+PIN_FACTORY = "RPiGPIOFactory"  # Use "MockFactory" for testing on non-RPi systems
 ```
 
 ## 🛠️ Installation
@@ -97,7 +107,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install python3-pip python3-gpiozero
 
 # Install Python packages
-pip install gpiozero
+pip install gpiozero fastapi uvicorn
 ```
 
 ### Clone and Setup
@@ -105,6 +115,9 @@ pip install gpiozero
 ```bash
 git clone https://github.com/pubuyun/ballLauncher.git
 cd ballLauncher
+
+# Install requirements
+pip install -r requirements.txt
 
 # Verify configuration
 python3 -c "import config; print('Configuration loaded successfully')"
@@ -117,6 +130,9 @@ python3 -c "import config; print('Configuration loaded successfully')"
 ```bash
 # Run the main control system
 python3 main.py
+
+# Run with web interface
+python3 main_web.py
 ```
 
 ### Interactive Testing
@@ -134,19 +150,14 @@ python3 test/test_tilt_servo.py
 python3 test/test_shooter.py
 ```
 
-### Shooter System Commands
+### Web Interface
 
-The integrated shooter test provides these interactive commands:
+The system includes a web interface that runs on `http://0.0.0.0:8000` by default. This provides:
 
-```bash
-shoot <speed>    # Trigger complete shoot cycle (speed: 0.0-1.0)
-power <value>    # Set flywheel power directly (0.0-1.0)
-push             # Manually move pusher to load position
-retract          # Manually retract pusher to idle position
-status           # Display current state and power levels
-help             # Show command help
-quit             # Exit program
-```
+- Real-time control of yaw and tilt angles
+- Flywheel power control
+- Shooting functionality
+- System status monitoring
 
 ## 🎯 API Reference
 
@@ -157,6 +168,7 @@ All hardware components inherit from `SubsystemBase`:
 ```python
 class SubsystemBase(ABC):
     def __init__(self):
+        self._initialized = False
         self._last_ts = None
 
     def _dt(self):
@@ -185,9 +197,12 @@ yaw.set_target_angle(45.0)
 
 # Run periodic updates
 yaw.periodic()  # Applies position update
+
+# Clean shutdown
+yaw.shutdown()
 ```
 
-### Servo Control
+### Tilt Servo Control
 
 ```python
 from hardware.tilt_servo import TiltServo
@@ -204,7 +219,7 @@ servo.periodic()  # Apply position update
 ### Integrated Shooter
 
 ```python
-from hardware.shooter import Shooter, ShooterState
+from hardware.shooter import Shooter
 
 shooter = Shooter()
 shooter.initialize()
@@ -265,19 +280,20 @@ python3 test/test_shooter.py
 
 - **Servo Control**: Direct `AngularServo` angle setting eliminates manual PWM calculations
 - **Threading**: Separate periodic update threads prevent blocking
+- **State Management**: Efficient state transitions prevent conflicts
 
 ### Hardware Optimizations
 
 - **Direct Control**: Servo provides immediate angle positioning without complex stepping
-- **State Management**: Integrated shooter prevents component conflicts
 - **Resource Management**: Proper initialization and cleanup
+- **Safety Limits**: Hardware-enforced angle and power limits
 
 ## 🛡️ Safety Features
 
 - **Angle Limits**: Hardware enforced min/max angles
 - **State Protection**: Prevents conflicting operations
-- **Automatic Disable**: Motors disable when not needed
 - **Emergency Stop**: Ctrl+C for immediate shutdown
+- **Power Management**: Automatic motor control
 
 ## ⚠️ Safety Guidelines
 
@@ -296,15 +312,23 @@ python3 test/test_shooter.py
 - Verify PWM pin connection
 - Check servo power supply (5V recommended)
 - Confirm angle limits in config
+- Ensure proper ground connections
+
+**Motor driver issues:**
+
+- Check motor power supply
+- Verify motor driver connections
+- Ensure proper voltage levels
 
 **Import errors:**
 
 - Install gpiozero: `pip install gpiozero`
 - Check Python version (3.7+ required)
+- Verify all dependencies in requirements.txt
 
 ### Debug Mode
 
-Enable verbose output by running tests with `-v` flag or adding debug prints in periodic methods.
+Enable verbose output by running tests with debug prints or checking system logs.
 
 ## 🤝 Contributing
 
@@ -321,5 +345,6 @@ This project is open source. Please check the repository for license details.
 ## 🙏 Acknowledgments
 
 - Built with [gpiozero](https://gpiozero.readthedocs.io/) for clean GPIO control
-- Uses Raspberry Pi GPIO capabilities for real-time hardware control
+- Uses [FastAPI](https://fastapi.tiangolo.com/) for web interface
 - Inspired by modular robotics control patterns
+- Raspberry Pi GPIO capabilities for real-time hardware control

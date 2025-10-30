@@ -1,39 +1,34 @@
-# Global configuration for Raspberry Pi 5 turret project
-# Adjust pin assignments to match your wiring.
-
 from dataclasses import dataclass
 
-# GPIO numbering mode: use BCM numbering
+
 GPIO_MODE_BCM = True
 PIN_FACTORY = (
     "PiGPIOFactory"  # Options: "RPiGPIOFactory", "MockFactory", "PiGPIOFactory"
 )
 
-# ===== Yaw Servo =====
+# Yaw Servo
 YAW_SERVO_PIN = 17
-
-# Motion limits
 YAW_MIN_DEG = -90.0
 YAW_MAX_DEG = 90.0
 
-# ===== Tilt Servo (Pitch) =====
+# Tilt Servo
 TILT_SERVO_PIN = 19
 PITCH_MIN_DEG = -8.0
 PITCH_MAX_DEG = 8.0
 
-# ===== Reload Servo=====
+# Reload Servo
 RELOAD_SERVO_PIN = 20
 RELOAD_IDLE_ANGLE = 90
 RELOAD_LOAD_ANGLE = 0
 RELOAD_HOLD_SEC = 0.2
 
-# ===== Flywheel Motors =====
+# Flywheel Motors
 
-# Motor A (left)
+# Motor A
 MOTOR_A_IN1 = 13
 MOTOR_A_IN2 = 6
 
-# Motor B (right)
+# Motor B
 MOTOR_B_IN3 = 22
 MOTOR_B_IN4 = 27
 

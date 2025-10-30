@@ -10,7 +10,7 @@ def control_loop(yaw, tilt, shooter, stop_event):
     yaw.initialize()
     tilt.initialize()
     shooter.initialize()
-    print("Control loop started (SIM, PC webcam).")
+    print("Control loop started.")
     try:
         while not stop_event.is_set():
             yaw.periodic()
